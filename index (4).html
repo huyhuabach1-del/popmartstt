@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>POP MART STT – Đăng ký số thứ tự (Demo)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --red:#da2534; --redsoft:#da253475; --txt:#383838; }
+    * { box-sizing:border-box; font-family: Arial, Helvetica, sans-serif; }
+    body { margin:0; background:#f7f7f7; color:var(--txt); }
+    .hidden{display:none!important}
+
+    .card { background:#fff; max-width:720px; margin:18px auto; padding:16px;
+      border-radius:10px; box-shadow:0 0 16px #00000024; }
+    .title { text-align:center; font-weight:800; font-size:24px; margin:6px 0 12px }
+    .subtitle { text-align:center; color:#6b6b6b; margin-bottom:10px; }
+
+    /* banners */
+    .banner { max-width:720px; margin:10px auto; }
+    .banner img { width:100%; border-radius:8px; display:block; }
+
+    .MyButton { width:100%; padding:12px 18px; border:none; border-radius:40px;
+      background:var(--red); color:#fff; font-weight:700; font-size:16px;
+      box-shadow:0 10px 20px -6px rgba(0,0,0,.12); cursor:pointer; }
+    .MyButton:hover{ filter:brightness(110%) }
+    .field{ margin-bottom:12px; }
+    .label { display:block; font-weight:600; font-size:14px; color:#444; margin-bottom:6px; }
+    .myTextBox, .MySelect{
+      width:100%; padding:14px 16px; border-radius:16px;
+      border:2px solid var(--redsoft); background:#fff;
+      font-size:16px; font-weight:600; color:#444; outline:0;
+    }
+    .myTextBox::placeholder{ color:#bdbdbd; font-weight:600; }
+    .MySelect{ appearance:none; background-image: linear-gradient(45deg, transparent 50%, #777 50%), linear-gradient(135deg, #777 50%, transparent 50%);
+      background-position: calc(100% - 18px) calc(50% - 4px), calc(100% - 12px) calc(50% - 4px);
+      background-size: 6px 6px, 6px 6px; background-repeat:no-repeat; }
+    .row3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+
+    #dvCount{ font-size:64px; font-weight:800; color:var(--red); text-align:center; margin:12px 0 }
+
+    .alert{ padding:10px 12px; border-radius:10px; line-height:1.5; }
+    .ok{ background:#e8f6ee; border:1px solid #bce3cd; color:#0a7f3b }
+    .err{ background:#fff3f3; border:1px solid #ffd4d4; color:#b00020 }
+
+    .captcha-wrap{ display:flex; gap:10px; align-items:center }
+    canvas#captchaCanvas{ border-radius:12px; }
+    .captcha-refresh{ width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
+      background:var(--red); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; }
+    .captcha-refresh:hover{ filter:brightness(110%) }
+
+    .receipt { border: 4px solid var(--red); border-radius:10px; padding:12px; }
+    .row { padding:10px 10px; border-bottom:1px solid #eee; }
+    .row:last-child{ border-bottom:none; }
+    .labelCell { color:#333; font-weight:600; }
+    .valueCell { color:var(--red); font-weight:700; }
+    .logo { background:var(--red); color:#fff; font-weight:900; font-size:38px; text-align:center; border-radius:6px; padding:8px 0; letter-spacing:2px; }
+    .successTitle { text-align:center; color:#1b7f2e; font-weight:800; font-size:22px; margin:12px 0 16px;}
+    .btns { display:flex; gap:10px; }
+  </style>
+
+  <!-- Fallback sales data (dùng khi mở file://) -->
+  <script id="sales-embedded" type="application/json">
+  {
+    "2025-08-28": ["10:00 - 12:00"],
+    "2025-08-29": ["09:00 - 11:00"],
+    "2025-08-30": ["10:00 - 12:00"],
+    "2025-08-31": ["09:00 - 11:00"]
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Poster trắng cho màn đếm ngược -->
+  <div class="banner banner-event"><img src="banner.jpg" alt="Event Banner" /></div>
+  <!-- Header đỏ cho màn form -->
+  <div class="banner banner-header hidden"><img src="header-popmart.png" alt="POP MART" /></div>
+
+  <!-- Màn “link tạm đóng” (không dùng khi LINK_OPEN=true) -->
+  <section id="dvDongLink" class="card hidden">
+    <div class="title">Đăng ký số thứ tự mua Hot Items</div>
+    <div class="subtitle">POP MART STT</div>
+    <div class="alert err" style="text-align:center">Link đang tạm đóng. Vui lòng quay lại sau.</div>
+  </section>
+
+  <!-- Màn đếm ngược -->
+  <section id="dvDemNguoc" class="card">
+    <div class="title">Bạn đang được chuyển đến trang đăng ký</div>
+    <p class="subtitle"><i>You are being redirected to the registration page…</i></p>
+    <div id="dvCount">30</div>
+    <p class="subtitle">Vui lòng chờ trong giây lát.</p>
+  </section>
+
+  <!-- Form -->
+  <section id="registration-form" class="card hidden">
+    <div class="title">ĐĂNG KÝ TAHM GIA</div>
+
+    <div class="field">
+      <label class="label" for="slNgayBanHang">Sales date (Ngày bán hàng)</label>
+      <select id="slNgayBanHang" class="MySelect">
+        <option value="">Đang tải...</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="label" for="slPhien">Session (Phiên)</label>
+      <select id="slPhien" class="MySelect" disabled>
+        <option value="">Chọn ngày trước</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="label" for="txtHoTen">Full name (Họ tên)</label>
+      <input id="txtHoTen" class="myTextBox" placeholder="Họ và tên" />
+    </div>
+
+    <div class="field">
+      <label class="label">Date of birth (Ngày Sinh)</label>
+      <div class="row3">
+        <input id="dobD" class="myTextBox" placeholder="DD" />
+        <input id="dobM" class="myTextBox" placeholder="MM" />
+        <input id="dobY" class="myTextBox" placeholder="YYYY" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="txtPhone">Phone number (Số điện thoại)</label>
+      <input id="txtPhone" class="myTextBox" placeholder="094xxxxxxx" />
+    </div>
+
+    <div class="field">
+      <label class="label" for="txtEmail">Email</label>
+      <input id="txtEmail" type="email" class="myTextBox" placeholder="email@domain.com" />
+    </div>
+
+    <div class="field">
+      <label class="label" for="txtCCCD">ID Card/Passport (CCCD/Hộ chiếu)</label>
+      <input id="txtCCCD" class="myTextBox" placeholder="0482xxxxxxx" />
+    </div>
+
+    <div class="field">
+      <label class="label">CAPTCHA</label>
+      <div class="captcha-wrap">
+        <canvas id="captchaCanvas" width="165" height="54"></canvas>
+        <input id="captchaInput" class="myTextBox" placeholder="Nhập mã captcha" />
+        <button id="btnRefreshCap" type="button" class="captcha-refresh" title="Tải mã mới">↻</button>
+      </div>
+      <small style="color:#666">Mã hiển thị có nhiễu (grain, chấm/line, nghiêng nhẹ). Nhấn ↻ nếu khó đọc.</small>
+    </div>
+
+    <div class="field">
+      <label class="label"><input id="terms" type="checkbox" /> Tôi đã đọc và đồng ý với <a href="#" target="_blank">Thể lệ chương trình</a></label>
+    </div>
+
+    <div class="field"><button id="btnSubmit" class="MyButton">Đăng ký</button></div>
+    <div id="error-message" class="alert err hidden"></div>
+  </section>
+
+  <!-- Trang xác nhận -->
+  <section id="receiptPage" class="card hidden">
+    <div class="logo">POP MART</div>
+    <div class="successTitle">ĐĂNG KÝ THÀNH CÔNG</div>
+    <div class="receipt" id="receiptBox"></div>
+    <div class="btns" style="margin-top:12px;">
+      <button id="btnBack" class="MyButton">Đăng ký lại</button>
+      <button id="btnExport" class="MyButton" style="background:#1a835d">Xuất CSV</button>
+    </div>
+  </section>
+
+  <script>
+    /* ============ CẤU HÌNH ============ */
+    const LINK_OPEN = true;            // <-- MỞ LINK
+    const COUNTDOWN_SECONDS = 30;      // thời gian đếm ngược
+
+    /* ============ DOM & banner helpers ============ */
+    const $dong = document.getElementById('dvDongLink');
+    const $dem  = document.getElementById('dvDemNguoc');
+    const $form = document.getElementById('registration-form');
+    const $receipt = document.getElementById('receiptPage');
+    const $receiptBox = document.getElementById('receiptBox');
+    const $bannerEvent  = document.querySelector('.banner-event');   // poster trắng
+    const $bannerHeader = document.querySelector('.banner-header');  // header đỏ
+    function showEventBanner(){ if($bannerEvent) $bannerEvent.classList.remove('hidden'); if($bannerHeader) $bannerHeader.classList.add('hidden'); }
+    function showHeaderBanner(){ if($bannerEvent) $bannerEvent.classList.add('hidden'); if($bannerHeader) $bannerHeader.classList.remove('hidden'); }
+
+    /* ============ Nạp ngày/phiên ============ */
+    let SALES = {};
+    async function loadSales() {
+      let data = null;
+      try {
+        const r = await fetch('sales.json', {cache:'no-store'});
+        if (r.ok) data = await r.json();
+      } catch(e) {}
+      if (!data) {
+        try {
+          const el = document.getElementById('sales-embedded');
+          if (el && el.textContent.trim()) data = JSON.parse(el.textContent);
+        } catch(e) {}
+      }
+      SALES = data || {};
+      const daySel = document.getElementById('slNgayBanHang');
+      if (!Object.keys(SALES).length) {
+        daySel.innerHTML = '<option value="">(Chưa có lịch)</option>';
+        return;
+      }
+      daySel.innerHTML = '<option value="">-- Chọn ngày --</option>';
+      Object.keys(SALES).sort().forEach(d=>{
+        const opt = document.createElement('option');
+        opt.value = d;
+        const [y,m,dd] = d.split('-');
+        opt.textContent = `${dd}/${m}/${y}`;
+        daySel.appendChild(opt);
+      });
+      // chọn sẵn ngày đầu tiên để hiện phiên ngay
+      if (daySel.options.length > 1) {
+        daySel.selectedIndex = 1;
+        daySel.dispatchEvent(new Event('change'));
+      }
+    }
+    loadSales();
+
+    // Phiên cố định: Sáng / Chiều
+    document.getElementById('slNgayBanHang').addEventListener('change', e=>{
+      const day = e.target.value;
+      const sSel = document.getElementById('slPhien');
+      sSel.innerHTML = '<option value="">-- Chọn phiên --</option>';
+      sSel.disabled = !day;
+      if (day) {
+        const opt1 = document.createElement('option'); opt1.value = 'S1'; opt1.textContent = 'Sáng';
+        const opt2 = document.createElement('option'); opt2.value = 'S2'; opt2.textContent = 'Chiều';
+        sSel.appendChild(opt1); sSel.appendChild(opt2);
+      }
+    });
+
+    /* ============ Link đóng/mở + đếm ngược ============ */
+    function showClosed() {
+      $dong.classList.remove('hidden'); $dem.classList.add('hidden'); $form.classList.add('hidden'); $receipt.classList.add('hidden');
+      showEventBanner();
+    }
+    function startCountdown(sec){
+      $dong.classList.add('hidden'); $dem.classList.remove('hidden'); $form.classList.add('hidden'); $receipt.classList.add('hidden');
+      showEventBanner();
+      const $c = document.getElementById('dvCount'); let t = sec; $c.textContent = t;
+      const timer = setInterval(()=>{
+        t--; $c.textContent = t;
+        if(t<=0){
+          clearInterval(timer);
+          $dem.classList.add('hidden');
+          $form.classList.remove('hidden');
+          showHeaderBanner();
+          renderCaptcha();
+        }
+      },1000);
+    }
+    LINK_OPEN ? startCountdown(COUNTDOWN_SECONDS) : showClosed();
+
+    /* ============ CAPTCHA ============ */
+    const $canvas = document.getElementById('captchaCanvas');
+    const ctx = $canvas.getContext('2d', { willReadFrequently:true });
+    const $capInput = document.getElementById('captchaInput');
+    const $btnRefresh = document.getElementById('btnRefreshCap');
+    let curCap = '';
+
+    function randomCaptcha(len=5){
+      const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let s=''; for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+      return s;
+    }
+    function drawGrain(w,h){
+      const img = ctx.createImageData(w,h);
+      for(let i=0;i<img.data.length;i+=4){
+        const g = 190 + Math.random()*50;
+        img.data[i]=img.data[i+1]=img.data[i+2]=g; img.data[i+3]=255;
+      }
+      ctx.putImageData(img,0,0);
+    }
+    function speckles(w,h,n=280){
+      for(let i=0;i<n;i++){
+        const x=Math.random()*w, y=Math.random()*h, r=Math.random()*1.4+.3;
+        ctx.beginPath();
+        ctx.fillStyle = Math.random()<.5 ? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.35)';
+        ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+      }
+    }
+    function noiseLines(w,h,n=3){
+      for(let i=0;i<n;i++){
+        ctx.beginPath(); ctx.lineWidth=1;
+        ctx.strokeStyle=Math.random()<.5?'rgba(0,0,0,.25)':'rgba(255,255,255,.25)';
+        let x=0,y=Math.random()*h; ctx.moveTo(x,y);
+        const seg=8+Math.floor(Math.random()*6);
+        for(let s=0;s<seg;s++){ x+=w/seg; y+= (Math.random()-.5)*(h*.25); y=Math.max(2,Math.min(h-2,y)); ctx.lineTo(x,y); }
+        ctx.stroke();
+      }
+    }
+    function drawText(text,w,h){
+      const baseY=h/2+10, spacing=w/(text.length+1);
+      for(let i=0;i<text.length;i++){
+        const ch=text[i], x=spacing*(i+1)+(Math.random()-.5)*3, y=baseY+(Math.random()-.5)*6;
+        ctx.save();
+        const rot=(Math.random()*.22-.11), sc=.94+Math.random()*.12;
+        ctx.translate(x,y); ctx.rotate(rot); ctx.scale(sc,sc);
+        const fonts=['18px Georgia','20px "Times New Roman"','22px serif','20px Cambria','22px "DejaVu Serif"'];
+        ctx.font=fonts[Math.floor(Math.random()*fonts.length)];
+        ctx.fillStyle='#111'; ctx.fillText(ch,-6,0);
+        ctx.restore();
+      }
+    }
+    function soften(){ ctx.globalAlpha=.08; for(let i=0;i<3;i++) ctx.drawImage($canvas,-1,0); ctx.globalAlpha=1; }
+    function renderCaptcha(){
+      const w=$canvas.width,h=$canvas.height;
+      ctx.clearRect(0,0,w,h); drawGrain(w,h); soften(); speckles(w,h,240); noiseLines(w,h,3);
+      curCap = randomCaptcha(5); drawText(curCap,w,h); speckles(w,h,110);
+      $capInput.value=''; $capInput.focus();
+    }
+    $btnRefresh.addEventListener('click', renderCaptcha);
+
+    /* ============ Validate & Submit ============ */
+    const $btn = document.getElementById('btnSubmit');
+    const $err = document.getElementById('error-message');
+
+    function showError(msg){ $err.textContent=msg; $err.classList.remove('hidden'); }
+    function hideError(){ $err.classList.add('hidden'); }
+
+    function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+    function validDOB(d,m,y){
+      if(!/^\d{1,2}$/.test(d)||!/^\d{1,2}$/.test(m)||!/^\d{4}$/.test(y)) return false;
+      const dd=+d, mm=+m, yy=+y, dt=new Date(yy,mm-1,dd);
+      return dt.getFullYear()===yy && dt.getMonth()+1===mm && dt.getDate()===dd;
+    }
+
+    // Đếm số theo Ngày+Phiên
+    function getNextNumberFor(day, sessionText) {
+      const key = 'counter_' + day + '_' + sessionText;
+      const cur = parseInt(localStorage.getItem(key) || '0', 10) + 1;
+      localStorage.setItem(key, String(cur));
+      return cur;
+    }
+
+    // CSV
+    const REG_KEY = 'registrations_demo';
+    function storeRegistration(obj){
+      const arr = JSON.parse(localStorage.getItem(REG_KEY) || '[]');
+      arr.push(obj);
+      localStorage.setItem(REG_KEY, JSON.stringify(arr));
+    }
+    function exportCSV(){
+      const arr = JSON.parse(localStorage.getItem(REG_KEY) || '[]');
+      if(!arr.length){ alert('Chưa có dữ liệu để xuất.'); return; }
+      const headers = Object.keys(arr[0]);
+      const lines = [headers.join(',')].concat(
+        arr.map(o => headers.map(h => '"' + String(o[h]).replace(/"/g,'""') + '"').join(','))
+      );
+      const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'registrations.csv'; a.click();
+      URL.revokeObjectURL(url);
+    }
+    document.getElementById('btnExport').addEventListener('click', exportCSV);
+    document.getElementById('btnBack').addEventListener('click', ()=>{
+      showHeaderBanner();
+      document.getElementById('receiptPage').classList.add('hidden');
+      document.getElementById('registration-form').classList.remove('hidden');
+    });
+
+    $btn.addEventListener('click', ()=>{
+      hideError();
+      const hoten = document.getElementById('txtHoTen').value.trim();
+      const sdt   = document.getElementById('txtPhone').value.trim();
+      const email = document.getElementById('txtEmail').value.trim();
+      const cccd  = document.getElementById('txtCCCD').value.trim();
+      const dd    = document.getElementById('dobD').value.trim();
+      const mm    = document.getElementById('dobM').value.trim();
+      const yy    = document.getElementById('dobY').value.trim();
+      const ngay  = document.getElementById('slNgayBanHang').value;
+      const phienIdx = document.getElementById('slPhien').value;
+      const phienTxt = document.getElementById('slPhien').selectedOptions[0]?.textContent || '';
+      const cap   = document.getElementById('captchaInput').value.trim();
+      const agree = document.getElementById('terms').checked;
+
+      if(!ngay) return showError('Vui lòng chọn Ngày bán hàng');
+      if(!phienIdx) return showError('Vui lòng chọn Phiên');
+      if(!hoten) return showError('Vui lòng nhập Họ và tên');
+      if(!validDOB(dd,mm,yy)) return showError('Ngày sinh không hợp lệ (DD/MM/YYYY)');
+      if(!/^\d{9,11}$/.test(sdt)) return showError('Số điện thoại không hợp lệ');
+      if(!validEmail(email)) return showError('Email không hợp lệ');
+      if(!/^\w{6,}$/.test(cccd)) return showError('CCCD không hợp lệ');
+      if(!cap) return showError('Vui lòng nhập mã CAPTCHA');
+      if(cap.toLowerCase() !== curCap.toLowerCase()){ renderCaptcha(); return showError('Mã CAPTCHA không đúng'); }
+      if(!agree) return showError('Bạn cần đồng ý điều khoản');
+
+      const [y,m,d] = ngay.split('-');
+      const queueNumber = getNextNumberFor(ngay, phienTxt);
+
+      const row = [
+        ['Sales date (Ngày bán hàng):', `${d}/${m}/${y}`],
+        ['Session (Phiên):', phienTxt],
+        ['Số thứ tự (Numerical order):', `#${queueNumber}`],
+        ['Full name (Họ tên):', hoten],
+        ['Date of birth (Ngày Sinh):', `${dd.padStart(2,'0')}/${mm.padStart(2,'0')}/${yy}`],
+        ['Phone number (Số điện thoại):', sdt],
+        ['Email:', email],
+        ['ID Card/Passport (CCCD/Hộ chiếu):', cccd]
+      ];
+      $receiptBox.innerHTML = row.map(([l,v])=>`<div class="row"><span class="labelCell">${l}</span> <span class="valueCell">${v}</span></div>`).join('');
+      $form.classList.add('hidden');
+      $receipt.classList.remove('hidden');
+
+      // Ẩn mọi banner khi đã đăng ký xong, cuộn tới kết quả
+      if ($bannerEvent) $bannerEvent.classList.add('hidden');
+      if ($bannerHeader) $bannerHeader.classList.add('hidden');
+      $receipt.scrollIntoView({behavior:'smooth', block:'start'});
+
+      storeRegistration({
+        sales_date: `${d}/${m}/${y}`, session: phienTxt, number: queueNumber,
+        full_name: hoten, dob: `${dd.padStart(2,'0')}/${mm.padStart(2,'0')}/${yy}`,
+        phone: sdt, email: email, idcard: cccd
+      });
+      renderCaptcha();
+    });
+  </script>
+</body>
+</html>
